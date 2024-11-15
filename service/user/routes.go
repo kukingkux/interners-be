@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-playground/validator"
 	"github.com/gorilla/mux"
+	"github.com/kukingkux/interners-be/config"
 	"github.com/kukingkux/interners-be/service/auth"
 	"github.com/kukingkux/interners-be/types"
 	"github.com/kukingkux/interners-be/utils"
@@ -25,7 +26,36 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 }
 
 func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
+	// get JSON payload
+	var payload types.LoginUserPayload
+	if err := utils.ParseJSON(r, &payload); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+	}
 
+	// validate the payload
+	if err := utils.Validate.Struct(payload); err != nil {
+		errors := err.(validator.ValidationErrors)
+		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("invalid payload %v", errors))
+	}
+
+	u, err := h.store.GetUserByEmail(payload.Email)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("not found, invalid email or password"))
+	}
+
+	if !auth.ComparePassword(u.Password, []byte(payload.Password)) {
+		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("not found, invalid email or password"))
+		return
+	}
+
+	secret := []byte(config.Envs.JWTSecret)
+	token, err := auth.CreateJWT(secret, u.ID)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	utils.WriteJSON(w, http.StatusOK, map[string]string{"token": token})
 }
 func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 	// get JSON payload

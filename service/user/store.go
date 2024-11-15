@@ -23,7 +23,7 @@ func (s *Store) GetUserByEmail(email string) (*types.User, error) {
 
 	u := new(types.User)
 	for rows.Next() {
-		u, err = ScanRowIntoUser(rows)
+		u, err = scanRowsIntoUser(rows)
 		if err != nil {
 			return nil, err
 		}
@@ -36,7 +36,7 @@ func (s *Store) GetUserByEmail(email string) (*types.User, error) {
 	return u, nil
 }
 
-func ScanRowIntoUser(rows *sql.Rows) (*types.User, error) {
+func scanRowsIntoUser(rows *sql.Rows) (*types.User, error) {
 	user := new(types.User)
 
 	err := rows.Scan(
@@ -62,7 +62,7 @@ func (s *Store) GetUserById(id int) (*types.User, error) {
 
 	u := new(types.User)
 	for rows.Next() {
-		u, err = ScanRowIntoUser(rows)
+		u, err = scanRowsIntoUser(rows)
 		if err != nil {
 			return nil, err
 		}
@@ -75,7 +75,7 @@ func (s *Store) GetUserById(id int) (*types.User, error) {
 	return u, nil
 }
 func (s *Store) CreateUser(user types.User) error {
-	_, err := s.db.Exec("INSERT INTO users (fristName, lastName, email, password) VALUES (?,?,?,?)", user.FirstName, user.LastName, user.Email, user.Password)
+	_, err := s.db.Exec("INSERT INTO users (firstName, lastName, email, password) VALUES (?	,?,?,?)", user.FirstName, user.LastName, user.Email, user.Password)
 	if err != nil {
 		return err
 	}
