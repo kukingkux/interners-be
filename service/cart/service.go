@@ -7,36 +7,36 @@ import (
 )
 
 func getCartItemsIDs(items []types.CartItem) ([]int, error) {
-	productIds := make([]int, len(items))
+	postIds := make([]int, len(items))
 	for i, item := range items {
 		if item.Quantity <= 0 {
-			return nil, fmt.Errorf("invalid quanrtity for the product %d", item.ProductID)
+			return nil, fmt.Errorf("invalid quanrtity for the post %d", item.PostID)
 		}
 
-		productIds[i] = item.ProductID
+		postIds[i] = item.PostID
 	}
 
-	return productIds, nil
+	return postIds, nil
 }
 
-func (h *Handler) createOrder(ps []types.Product, items []types.CartItem, userID int) (int, float64, error) {
-	productMap := make(map[int]types.Product)
-	for _, product := range ps {
-		productMap[product.ID] = product
+func (h *Handler) createOrder(ps []types.Post, items []types.CartItem, userID int) (int, float64, error) {
+	postMap := make(map[int]types.Post)
+	for _, post := range ps {
+		postMap[post.ID] = post
 	}
 
-	// check product if in stock
-	if err := checkIfCartIsInStock(items, productMap); err != nil {
+	// check post if in stock
+	if err := checkIfCartIsInStock(items, postMap); err != nil {
 		return 0, 0, nil
 	}
 	// calculate total price\
-	totalPrice := calculateTotalPrice(items, productMap)
-	// reduce quantity of product
+	totalPrice := calculateTotalPrice(items, postMap)
+	// reduce quantity of post
 	for _, item := range items {
-		product := productMap[item.ProductID]
-		product.Quantity -= item.Quantity
+		post := postMap[item.PostID]
+		// post.Quantity -= item.Quantity
 
-		h.productStore.UpdateProduct(product)
+		h.postStore.UpdatePost(post)
 	}
 	// create order
 	orderID, err := h.store.CreateOrder(types.Order{
@@ -51,42 +51,42 @@ func (h *Handler) createOrder(ps []types.Product, items []types.CartItem, userID
 	// create order items
 	for _, item := range items {
 		h.store.CreateOrderItem(types.OrderItem{
-			OrderID:   orderID,
-			ProductID: item.ProductID,
-			Quantity:  item.Quantity,
-			Price:     productMap[item.ProductID].Price,
+			OrderID:  orderID,
+			PostID:   item.PostID,
+			Quantity: item.Quantity,
+			// Price:    postMap[item.PostID].Price,
 		})
 	}
 
 	return orderID, totalPrice, nil
 }
 
-func checkIfCartIsInStock(cartItems []types.CartItem, products map[int]types.Product) error {
+func checkIfCartIsInStock(cartItems []types.CartItem, posts map[int]types.Post) error {
 	if len(cartItems) == 0 {
 		return fmt.Errorf("cart is empty")
 	}
 
-	for _, item := range cartItems {
-		product, ok := products[item.ProductID]
-		if !ok {
-			return fmt.Errorf("product %d is not available in the store, please refresh your cart", item.ProductID)
-		}
+	// for _, item := range cartItems {
+	// 	post, ok := posts[item.PostID]
+	// 	if !ok {
+	// 		return fmt.Errorf("post %d is not available in the store, please refresh your cart", item.PostID)
+	// 	}
 
-		if product.Quantity < item.Quantity {
-			return fmt.Errorf("product %s is not available in the quantity requested", product.Name)
-		}
-	}
+	// 	if post.Quantity < item.Quantity {
+	// 		return fmt.Errorf("post %s is not available in the quantity requested", post.Name)
+	// 	}
+	// }
 
 	return nil
 }
 
-func calculateTotalPrice(cartItems []types.CartItem, products map[int]types.Product) float64 {
+func calculateTotalPrice(cartItems []types.CartItem, posts map[int]types.Post) float64 {
 	var total float64
 
-	for _, item := range cartItems {
-		product := products[item.ProductID]
-		total += product.Price * float64(item.Quantity)
-	}
+	// for _, item := range cartItems {
+	// 	post := posts[item.PostID]
+	// 	total += post.Price * float64(item.Quantity)
+	// }
 
 	return total
 }

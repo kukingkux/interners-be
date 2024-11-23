@@ -2,20 +2,34 @@ package types
 
 import "time"
 
-type ProductStore interface {
-	GetProducts() ([]Product, error)
-	GetProductsById(ps []int) ([]Product, error)
-	UpdateProduct(Product) error
-	CreateProduct(CreateProductPayload) error
+type GoAuth struct {
+	Id            string `json:"id,omitempty"`
+	Email         string `json:"email,omitempty"`
+	VerifiedEmail bool   `json:"verified_email,omitempty"`
+	Name          string `json:"name,omitempty"`
+	GivenName     string `json:"given_name,omitempty"`
+	FamilyName    string `json:"family_name,omitempty"`
+	Picture       string `json:"picture,omitempty"`
+	Locale        string `json:"locale,omitempty"`
 }
 
-type Product struct {
+type PostStore interface {
+	GetPosts() ([]*Post, error)
+	GetPostById(id int) (*Post, error)
+	GetPostsById(ids []int) ([]Post, error)
+	UpdatePost(Post) error
+	CreatePost(CreatePostPayload) error
+}
+
+type Post struct {
 	ID          int       `json:"id,omitempty"`
-	Name        string    `json:"name,omitempty"`
+	UserID      int       `json:"user_id,omitempty"`
+	CompanyID   int       `json:"company_id,omitempty"`
+	CompanyName string    `json:"company_name,omitempty"`
+	Title       string    `json:"title,omitempty"`
 	Description string    `json:"description,omitempty"`
-	Image       string    `json:"image,omitempty"`
-	Price       float64   `json:"price,omitempty"`
-	Quantity    int       `json:"quantity,omitempty"`
+	Requirement string    `json:"requirement,omitempty"`
+	Salary      float64   `json:"salary,omitempty"`
 	CreatedAt   time.Time `json:"created_at,omitempty"`
 }
 
@@ -36,7 +50,7 @@ type Order struct {
 type OrderItem struct {
 	ID        int       `json:"id,omitempty"`
 	OrderID   int       `json:"order_id,omitempty"`
-	ProductID int       `json:"product_id,omitempty"`
+	PostID    int       `json:"post_id,omitempty"`
 	Quantity  int       `json:"quantity,omitempty"`
 	Price     float64   `json:"price,omitempty"`
 	CreatedAt time.Time `json:"created_at,omitempty"`
@@ -49,20 +63,25 @@ type UserStore interface {
 }
 
 type User struct {
-	ID        int       `json:"id,omitempty"`
-	FirstName string    `json:"firstName,omitempty"`
-	LastName  string    `json:"lastName,omitempty"`
-	Email     string    `json:"email,omitempty"`
-	Password  string    `json:"password,omitempty"`
-	CreatedAt time.Time `json:"created_at,omitempty"`
+	ID             int       `json:"id,omitempty"`
+	FirstName      string    `json:"firstName,omitempty"`
+	LastName       string    `json:"lastName,omitempty"`
+	Email          string    `json:"email,omitempty"`
+	Password       string    `json:"password,omitempty"`
+	PhoneNumber    string    `json:"phone_number,omitempty"`
+	ZipCode        string    `json:"zip_code,omitempty"`
+	City           string    `json:"city,omitempty"`
+	Address        string    `json:"address,omitempty"`
+	CV             string    `json:"cv,omitempty"`
+	ProfilePicture string    `json:"profile_picture,omitempty"`
+	CreatedAt      time.Time `json:"created_at,omitempty"`
 }
 
-type CreateProductPayload struct {
-	Name        string  `json:"name" validate:"required"`
-	Description string  `json:"description"`
-	Image       string  `json:"image"`
-	Price       float64 `json:"price" validate:"required"`
-	Quantity    int     `json:"quantity" validate:"required"`
+type CreatePostPayload struct {
+	Title       string  `json:"name,omitempty" validate:"required"`
+	Description string  `json:"description,omitempty" validate:"required"`
+	Requirement string  `json:"image,omitempty" validate:"required"`
+	Salary      float64 `json:"salary,omitempty" validate:"required"`
 }
 
 type RegisterUserPayload struct {
@@ -77,8 +96,8 @@ type LoginUserPayload struct {
 }
 
 type CartItem struct {
-	ProductID int `json:"product_id,omitempty"`
-	Quantity  int `json:"quantity,omitempty"`
+	PostID   int `json:"post_id,omitempty"`
+	Quantity int `json:"quantity,omitempty"`
 }
 
 type CartCheckoutPayload struct {

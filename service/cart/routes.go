@@ -12,13 +12,13 @@ import (
 )
 
 type Handler struct {
-	store        types.OrderStore
-	productStore types.ProductStore
-	userStore    types.UserStore
+	store     types.OrderStore
+	postStore types.PostStore
+	userStore types.UserStore
 }
 
-func NewHandler(store types.OrderStore, productStore types.ProductStore, userStore types.UserStore) *Handler {
-	return &Handler{store: store, productStore: productStore, userStore: userStore}
+func NewHandler(store types.OrderStore, postStore types.PostStore, userStore types.UserStore) *Handler {
+	return &Handler{store: store, postStore: postStore, userStore: userStore}
 }
 
 func (h *Handler) RegisterRoutes(router *mux.Router) {
@@ -39,14 +39,14 @@ func (h *Handler) handleCheckout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get Products
-	productIDs, err := getCartItemsIDs(cart.Items)
+	// Get Posts
+	postIDs, err := getCartItemsIDs(cart.Items)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
 
-	ps, err := h.productStore.GetProductsById(productIDs)
+	ps, err := h.postStore.GetPostsById(postIDs)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, err)
 		return

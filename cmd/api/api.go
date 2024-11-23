@@ -6,9 +6,10 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/kukingkux/interners-be/service/auth"
 	"github.com/kukingkux/interners-be/service/cart"
 	"github.com/kukingkux/interners-be/service/order"
-	"github.com/kukingkux/interners-be/service/product"
+	"github.com/kukingkux/interners-be/service/post"
 	"github.com/kukingkux/interners-be/service/user"
 )
 
@@ -32,14 +33,17 @@ func (s *APIServer) Run() error {
 	userHandler := user.NewHandler(userStore)
 	userHandler.RegisterRoutes(subrouter)
 
-	productStore := product.NewStore(s.db)
-	productHandler := product.NewHandler(productStore)
-	productHandler.RegisterRoutes(subrouter)
+	postStore := post.NewStore(s.db)
+	postHandler := post.NewHandler(postStore)
+	postHandler.RegisterRoutes(subrouter)
 
 	orderStore := order.NewStore(s.db)
 
-	cartHandler := cart.NewHandler(orderStore, productStore, userStore)
+	cartHandler := cart.NewHandler(orderStore, postStore, userStore)
 	cartHandler.RegisterRoutes(subrouter)
+
+	authStore := auth.NewAuthHandler(userStore)
+	authStore.RegisterRoutes(subrouter)
 
 	log.Println("Listening on", s.addr)
 

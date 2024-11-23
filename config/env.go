@@ -6,6 +6,8 @@ import (
 	"strconv"
 
 	"github.com/joho/godotenv"
+	"github.com/markbates/goth/providers/google"
+	"golang.org/x/oauth2"
 )
 
 type Config struct {
@@ -17,6 +19,8 @@ type Config struct {
 	DBName                 string
 	JWTExpirationInSeconds int64
 	JWTSecret              string
+	GoogleClientId         string
+	GoogleClientSecret     string
 }
 
 func initConfig() Config {
@@ -31,6 +35,8 @@ func initConfig() Config {
 		DBName:                 getEnv("DB_NAME", "interners"),
 		JWTExpirationInSeconds: getEnvAsInt("JWT_EXP", 3600*24*7),
 		JWTSecret:              getEnv("JWT_SECRET", "not-secret-secret-anymore?"),
+		GoogleClientId:         getEnv("CLIENT_ID", "264628624861-l1f31m9tchs324uoe669pdjqc61i5em5.apps.googleusercontent.com"),
+		GoogleClientSecret:     getEnv("CLIENT_SECRET", "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"),
 	}
 }
 
@@ -55,4 +61,15 @@ func getEnvAsInt(key string, fallback int64) int64 {
 	}
 
 	return fallback
+}
+
+var GoogleOauthConfig = &oauth2.Config{
+	RedirectURL:  "http://localhost:8080/api/v1/auth/google/callback",
+	ClientID:     Envs.GoogleClientId,
+	ClientSecret: Envs.GoogleClientSecret,
+	Scopes: []string{
+		"email",
+		"profile",
+	},
+	Endpoint: google.Endpoint,
 }
