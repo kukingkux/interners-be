@@ -33,26 +33,60 @@ type Post struct {
 	CreatedAt   time.Time `json:"created_at,omitempty"`
 }
 
-type OrderStore interface {
-	CreateOrder(Order) (int, error)
-	CreateOrderItem(OrderItem) error
+type CompanyStore interface {
+	GetCompanyies() ([]*Company, error)
+	GetCompanyById(id int) (*Company, error)
+	GetCompanUserRoleById(ids []int) ([]Company, error)
+	UpdateCompany(Company) error
+	CreateCompany(CreateCompanyPayload) error
 }
 
-type Order struct {
+type Company struct {
+	ID          int       `json:"id,omitempty"`
+	UserID      int       `json:"user_id,omitempty"`
+	Name        string    `json:"name,omitempty"`
+	Description string    `json:"description,omitempty"`
+	Contact     int       `json:"contact,omitempty"`
+	Email       string    `json:"email,omitempty"`
+	Address     string    `json:"address,omitempty"`
+	Province    string    `json:"province,omitempty"`
+	City        string    `json:"city,omitempty"`
+	Logo        string    `json:"logo,omitempty"`
+	Banner      string    `json:"banner,omitempty"`
+	CreatedAt   time.Time `json:"created_at,omitempty"`
+}
+
+type UserRoleStore interface {
+	GetUserRoles() ([]*UserRole, error)
+	GetUserRoleById(id int) (*UserRole, error)
+	GetUserRolesById(ids []int) ([]UserRole, error)
+	UpdateUserRole(UserRole) error
+	CreateUserRole(CreateUserRolePayload) error
+}
+
+type UserRole struct {
 	ID        int       `json:"id,omitempty"`
 	UserID    int       `json:"user_id,omitempty"`
-	Total     float64   `json:"total,omitempty"`
-	Status    string    `json:"status,omitempty"`
-	Address   string    `json:"address,omitempty"`
+	RoleID    int       `json:"role_id,omitempty"`
 	CreatedAt time.Time `json:"created_at,omitempty"`
 }
 
-type OrderItem struct {
+type RolePermission struct {
+	ID           int       `json:"id,omitempty"`
+	RoleID       int       `json:"role_id,omitempty"`
+	PermissionID int       `json:"permission_id,omitempty"`
+	CreatedAt    time.Time `json:"created_at,omitempty"`
+}
+
+type Role struct {
 	ID        int       `json:"id,omitempty"`
-	OrderID   int       `json:"order_id,omitempty"`
-	PostID    int       `json:"post_id,omitempty"`
-	Quantity  int       `json:"quantity,omitempty"`
-	Price     float64   `json:"price,omitempty"`
+	Name      string    `json:"name,omitempty"`
+	CreatedAt time.Time `json:"created_at,omitempty"`
+}
+
+type Permission struct {
+	ID        int       `json:"id,omitempty"`
+	Name      string    `json:"name,omitempty"`
 	CreatedAt time.Time `json:"created_at,omitempty"`
 }
 
@@ -84,6 +118,36 @@ type CreatePostPayload struct {
 	Salary      float64 `json:"salary,omitempty" validate:"required"`
 }
 
+type CreateCompanyPayload struct {
+	Name        string `json:"name,omitempty" validate:"required"`
+	Description string `json:"description,omitempty"`
+	Contact     int    `json:"contact,omitempty"`
+	Email       string `json:"email,omitempty"`
+	Address     string `json:"address,omitempty"`
+	Province    string `json:"province,omitempty"`
+	City        string `json:"city,omitempty"`
+	Logo        string `json:"logo,omitempty"`
+	Banner      string `json:"banner,omitempty"`
+}
+
+type CreateUserRolePayload struct {
+	UserId int `json:"user_id,omitempty" validate:"required"`
+	RoleId int `json:"role_id,omitempty" validate:"required"`
+}
+
+type CreateRolePermissionPayload struct {
+	RoleId       int `json:"role_id,omitempty" validate:"required"`
+	PermissionId int `json:"permission_id,omitempty" validate:"required"`
+}
+
+type CreateRolePayload struct {
+	Name string `json:"name,omitempty" validate:"required"`
+}
+
+type CreatePermissionPayload struct {
+	Name string `json:"name,omitempty" validate:"required"`
+}
+
 type RegisterUserPayload struct {
 	FirstName string `json:"firstName,omitempty" validate:"required"`
 	LastName  string `json:"lastName,omitempty" validate:"required"`
@@ -93,13 +157,4 @@ type RegisterUserPayload struct {
 type LoginUserPayload struct {
 	Email    string `json:"email,omitempty" validate:"required,email"`
 	Password string `json:"password,omitempty" validate:"required,min=8,max=120"`
-}
-
-type CartItem struct {
-	PostID   int `json:"post_id,omitempty"`
-	Quantity int `json:"quantity,omitempty"`
-}
-
-type CartCheckoutPayload struct {
-	Items []CartItem `json:"items,omitempty" validate:"required"`
 }

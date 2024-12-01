@@ -3,8 +3,10 @@ package auth
 import (
 	"context"
 	"crypto/rand"
+	"database/sql"
 	"encoding/base64"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 
@@ -16,10 +18,19 @@ import (
 
 type Handler struct {
 	userStore types.UserStore
+	goAuth    types.GoAuth
+	db        *sql.DB
+	certs     map[string]string
 }
 
-func NewAuthHandler(userStore types.UserStore) *Handler {
-	return &Handler{userStore: userStore}
+func NewAuthHandler(userStore types.UserStore) (*Handler, error) {
+	certs, err := Certificates()
+	if err != nil {
+		return nil, err
+	}
+
+	return &Handler{certs: certs, userStore: userStore}, nil
+
 }
 
 func (h *Handler) RegisterRoutes(router *mux.Router) {
@@ -33,20 +44,31 @@ func (h *Handler) oauthGoogleLogin(w http.ResponseWriter, r *http.Request) {
 	oauthState := generateStateOauthCookie(w)
 	u := config.GoogleOauthConfig.AuthCodeURL(oauthState, oauth2.AccessTypeOffline, oauth2.ApprovalForce)
 	http.Redirect(w, r, u, http.StatusTemporaryRedirect)
+
+	assertion := r.Header.Get("X-Goog-IAP-JWT-Assertion")
+	if assertion == "" {
+		fmt.Fprintln(w, "No Cloud IAP header found.")
+	}
+
+	email, _, err := ValidateAssertion(assertion, h.certs)
+	if err != nil {
+		log.Println(err)
+		fmt.Fprintln(w, "Could not validate assertion. Check app logs.")
+		return
+	}
+
+	fmt.Fprintf(w, "Hello %s\n", email)
+
 }
 
-// func (h *Handler) oauthHandler(w http.ResponseWriter, r *http.Request) {
-// 	url :=
-// }
-
 func (h *Handler) oauthGoogleCallback(w http.ResponseWriter, r *http.Request) {
-
 	user, err := getUserDataFromGoogle(r.FormValue("code"))
 	if err != nil {
 		log.Println(err.Error())
 		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 		return
 	}
+
 	fmt.Fprintf(w, "User Info %s\n", user)
 
 	// var jsonResp types.GoAuth
@@ -67,6 +89,11 @@ func (h *Handler) oauthGoogleCallback(w http.ResponseWriter, r *http.Request) {
 }
 
 func generateStateOauthCookie(w http.ResponseWriter) string {
+	// a, err := NewApp()
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+
 	b := make([]byte, 16)
 	rand.Read(b)
 	state := base64.URLEncoding.EncodeToString(b)
@@ -96,12 +123,23 @@ func getUserDataFromGoogle(code string) ([]byte, error) {
 		return nil, fmt.Errorf("failed getting user info: %s", err.Error())
 	}
 	defer response.Body.Close()
-	// contents, err := ioutil.ReadAll(response.Body)
+	contents, err := io.ReadAll(response.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed read response: %s", err.Error())
 	}
 
+	// var userData types.GoAuth
+	// err = json.Unmarshal(contents, &userData)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("JSON parsing failed: %s", err.Error())
+	// }
+
+	// var existingUser User
+	// if err := db.Query("Wemail = ?", types.GoAuth.Email).First(&existingUser).Error; err != nil {
+
+	// }
+
 	// saveUser(contents)
 	// saveToken(contents, token)
-	return []byte(token.AccessToken), nil
+	return contents, nil
 }

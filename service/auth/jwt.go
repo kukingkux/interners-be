@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -17,6 +18,68 @@ import (
 type contextKey string
 
 const UserKey contextKey = "userID"
+
+func ValidateAssertion(assertion string, certs map[string]string) (email string, userID string, err error) {
+	token, err := jwt.Parse(assertion, func(token *jwt.Token) (interface{}, error) {
+		keyID := token.Header["kid"].(string)
+
+		_, ok := token.Method.(*jwt.SigningMethodECDSA)
+		if !ok {
+			return nil, fmt.Errorf("unexpected signing method: %q", token.Header["alg"])
+		}
+
+		cert := certs[keyID]
+		return jwt.ParseECPublicKeyFromPEM([]byte(cert))
+	})
+
+	if err != nil {
+		return "", "", err
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return "", "", fmt.Errorf("could not extract claims (%T): %+v", token.Claims, token.Claims)
+	}
+
+	// if claims["aud"].(string) != aud {
+	// 	return "", "", fmt.Errorf("mismatched audience. aud field %q does not match %q", claims["aud"], aud)
+	// }
+
+	return claims["email"].(string), claims["sub"].(string), nil
+}
+
+// func Audience() (string, error) {
+// 	projectNumber, err := metadata.NumericProjectID()
+// 	if err != nil {
+// 		return "", fmt.Errorf("metadata.NumericProjectID: %w", err)
+// 	}
+
+// 	projectID, err := metadata.ProjectID()
+// 	if err != nil {
+// 		return "", fmt.Errorf("metadata.ProjectID: %w", err)
+// 	}
+
+// 	return "/projects/" + projectNumber + "/apps/" + projectID, nil
+// }
+
+func Certificates() (map[string]string, error) {
+	const url = "https://www.gstatic.com/iap/verify/public_key"
+	client := http.Client{
+		Timeout: 5 * time.Second,
+	}
+	resp, err := client.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("Get: %w", err)
+	}
+
+	var certs map[string]string
+	dec := json.NewDecoder(resp.Body)
+	if err := dec.Decode(&certs); err != nil {
+		return nil, fmt.Errorf("Decode: %w", err)
+	}
+
+	return certs, nil
+}
 
 func CreateJWT(secret []byte, userID int) (string, error) {
 	expiration := time.Second * time.Duration(config.Envs.JWTExpirationInSeconds)
