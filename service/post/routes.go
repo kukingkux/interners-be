@@ -24,6 +24,8 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 	router.HandleFunc("/posts/{postID}", h.handleGetPost).Methods(http.MethodGet)
 
 	router.HandleFunc("/posts", h.handleCreatePost).Methods(http.MethodPost)
+	router.HandleFunc("/posts", h.handleUpdatePost).Methods(http.MethodPut)
+	router.HandleFunc("/posts", h.handleDeletePost).Methods(http.MethodDelete)
 }
 
 func (h *Handler) handleGetPosts(w http.ResponseWriter, r *http.Request) {
@@ -79,4 +81,36 @@ func (h *Handler) handleCreatePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	utils.WriteJSON(w, http.StatusCreated, post)
+}
+
+func (h *Handler) handleUpdatePost(w http.ResponseWriter, r *http.Request) {
+	var post types.Post
+
+	if err := utils.ParseJSON(r, &post); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	err := h.store.UpdatePost(post)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, err)
+		return
+	}
+	utils.WriteJSON(w, http.StatusOK, post)
+}
+
+func (h *Handler) handleDeletePost(w http.ResponseWriter, r *http.Request) {
+	var post types.Post
+
+	if err := utils.ParseJSON(r, &post); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	err := h.store.DeletePost(post)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, err)
+		return
+	}
+	utils.WriteJSON(w, http.StatusOK, post)
 }

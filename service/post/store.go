@@ -77,8 +77,26 @@ func (s *Store) GetPostsById(postIDs []int) ([]types.Post, error) {
 	return posts, nil
 }
 
+func (s *Store) CreatePost(post types.CreatePostPayload) error {
+	_, err := s.db.Exec("INSERT INTO posts (title, description, requirement, salary) VALUES (?,?,?,?)", post.Title, post.Description, post.Requirement, post.Salary)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s *Store) UpdatePost(post types.Post) error {
 	_, err := s.db.Exec("UPDATE posts SET title = ?, description = ?, requirement = ?, salary = ? WHERE id = ?", post.Title, post.Description, post.Requirement, post.Salary, post.ID)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *Store) DeletePost(post types.Post) error {
+	_, err := s.db.Exec("DELETE FROM posts WHERE id = ?", post.ID)
 	if err != nil {
 		return err
 	}
@@ -91,9 +109,9 @@ func scanRowsIntoPost(rows *sql.Rows) (*types.Post, error) {
 
 	err := rows.Scan(
 		&post.ID,
-		&post.UserID,
-		&post.CompanyID,
-		&post.CompanyName,
+		// &post.UserID,
+		// &post.CompanyID,
+		// &post.CompanyName,
 		&post.Title,
 		&post.Description,
 		&post.Requirement,
@@ -105,13 +123,4 @@ func scanRowsIntoPost(rows *sql.Rows) (*types.Post, error) {
 	}
 
 	return post, nil
-}
-
-func (s *Store) CreatePost(post types.CreatePostPayload) error {
-	_, err := s.db.Exec("INSERT INTO posts (title, description, requirement, salary) VALUES (?,?,?,?)", post.Title, post.Description, post.Requirement, post.Salary)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }

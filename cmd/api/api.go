@@ -6,9 +6,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/kukingkux/interners-be/bin/unused/cart"
 	"github.com/kukingkux/interners-be/service/auth"
-	"github.com/kukingkux/interners-be/service/order"
 	"github.com/kukingkux/interners-be/service/post"
 	"github.com/kukingkux/interners-be/service/user"
 )
@@ -36,11 +34,6 @@ func (s *APIServer) Run() error {
 	postStore := post.NewStore(s.db)
 	postHandler := post.NewHandler(postStore)
 	postHandler.RegisterRoutes(subrouter)
-
-	orderStore := order.NewStore(s.db)
-
-	cartHandler := cart.NewHandler(orderStore, postStore, userStore)
-	cartHandler.RegisterRoutes(subrouter)
 
 	authStore, err := auth.NewAuthHandler(userStore)
 	if err != nil {

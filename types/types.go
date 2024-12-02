@@ -18,6 +18,7 @@ type PostStore interface {
 	GetPostById(id int) (*Post, error)
 	GetPostsById(ids []int) ([]Post, error)
 	UpdatePost(Post) error
+	DeletePost(Post) error
 	CreatePost(CreatePostPayload) error
 }
 
@@ -34,7 +35,7 @@ type Post struct {
 }
 
 type CompanyStore interface {
-	GetCompanyies() ([]*Company, error)
+	GetCompanies() ([]*Company, error)
 	GetCompanyById(id int) (*Company, error)
 	GetCompanUserRoleById(ids []int) ([]Company, error)
 	UpdateCompany(Company) error
@@ -112,9 +113,9 @@ type User struct {
 }
 
 type CreatePostPayload struct {
-	Title       string  `json:"name,omitempty" validate:"required"`
+	Title       string  `json:"title,omitempty" validate:"required"`
 	Description string  `json:"description,omitempty" validate:"required"`
-	Requirement string  `json:"image,omitempty" validate:"required"`
+	Requirement string  `json:"requirement,omitempty" validate:"required"`
 	Salary      float64 `json:"salary,omitempty" validate:"required"`
 }
 
