@@ -35,8 +35,8 @@ func initConfig() Config {
 		DBName:                 getEnv("DB_NAME", "interners"),
 		JWTExpirationInSeconds: getEnvAsInt("JWT_EXP", 3600*24*7),
 		JWTSecret:              getEnv("JWT_SECRET", "not-secret-secret-anymore?"),
-		GoogleClientId:         getEnv("CLIENT_ID", "264628624861-l1f31m9tchs324uoe669pdjqc61i5em5.apps.googleusercontent.com"),
-		GoogleClientSecret:     getEnv("CLIENT_SECRET", "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"),
+		GoogleClientId:         os.Getenv("GOOGLE_CLIENT_ID"),
+		GoogleClientSecret:     os.Getenv("GOOGLE_CLIENT_SECRET"),
 	}
 }
 
