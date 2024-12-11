@@ -79,10 +79,24 @@ type RolePermission struct {
 	CreatedAt    time.Time `json:"created_at,omitempty"`
 }
 
+type RoleStore interface {
+	GetRoles() ([]*Role, error)
+	GetRoleById(id int) (*UserRole, error)
+	UpdateRole(Role) error
+	CreateRole(CreateRolePayload) error
+}
+
 type Role struct {
 	ID        int       `json:"id,omitempty"`
 	Name      string    `json:"name,omitempty"`
 	CreatedAt time.Time `json:"created_at,omitempty"`
+}
+
+type PermissionStore interface {
+	GetPermissions() ([]*Permission, error)
+	GetPermissionById(id int) (*Permission, error)
+	UpdatePermission(Permission) error
+	CreatePermission(CreatePermissionPayload) error
 }
 
 type Permission struct {
