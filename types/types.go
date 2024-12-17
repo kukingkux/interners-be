@@ -72,6 +72,13 @@ type UserRole struct {
 	CreatedAt time.Time `json:"created_at,omitempty"`
 }
 
+type RolePermissionStore interface {
+	GetRolePermissions() ([]*RolePermission, error)
+	GetRolePermissionById(id int) (*UserRole, error)
+	UpdateRolePermission(RolePermission) error
+	CreateRolePermission(CreateRolePermissionPayload) error
+}
+
 type RolePermission struct {
 	ID           int       `json:"id,omitempty"`
 	RoleID       int       `json:"role_id,omitempty"`
@@ -146,13 +153,13 @@ type CreateCompanyPayload struct {
 }
 
 type CreateUserRolePayload struct {
-	UserId int `json:"user_id,omitempty" validate:"required"`
-	RoleId int `json:"role_id,omitempty" validate:"required"`
+	UserID int `json:"user_id,omitempty" validate:"required"`
+	RoleID int `json:"role_id,omitempty" validate:"required"`
 }
 
 type CreateRolePermissionPayload struct {
-	RoleId       int `json:"role_id,omitempty" validate:"required"`
-	PermissionId int `json:"permission_id,omitempty" validate:"required"`
+	RoleID       int `json:"role_id,omitempty" validate:"required"`
+	PermissionID int `json:"permission_id,omitempty" validate:"required"`
 }
 
 type CreateRolePayload struct {
