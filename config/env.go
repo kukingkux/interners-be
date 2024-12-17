@@ -27,12 +27,12 @@ func initConfig() Config {
 	godotenv.Load()
 
 	return Config{
-		PublicHost:             getEnv("PUBLIC_HOST", "http://localhost"),
-		Port:                   getEnv("PORT", "8080"),
-		DBUser:                 getEnv("DB_USER", "root"),
-		DBPassword:             getEnv("DB_PASSWORD", ""),
-		DBAddress:              fmt.Sprintf("%s:%s", getEnv("DB_HOST", "127.0.0.1"), getEnv("DB_PORT", "3306")),
-		DBName:                 getEnv("DB_NAME", "interners"),
+		PublicHost:             os.Getenv("PUBLIC_HOST"),
+		Port:                   os.Getenv("PORT"),
+		DBUser:                 os.Getenv("DB_USER"),
+		DBPassword:             os.Getenv("DB_PASSWORD"),
+		DBAddress:              fmt.Sprintf("%s:%s", os.Getenv("DB_HOST"), os.Getenv("DB_PORT")),
+		DBName:                 os.Getenv("DB_NAME"),
 		JWTExpirationInSeconds: getEnvAsInt("JWT_EXP", 3600*24*7),
 		JWTSecret:              getEnv("JWT_SECRET", "not-secret-secret-anymore?"),
 		GoogleClientId:         os.Getenv("GOOGLE_CLIENT_ID"),
