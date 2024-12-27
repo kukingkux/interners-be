@@ -5,10 +5,12 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
+	"net/url"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/kukingkux/interners-be/config"
@@ -62,30 +64,88 @@ func (h *Handler) oauthGoogleLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) oauthGoogleCallback(w http.ResponseWriter, r *http.Request) {
-	user, err := getUserDataFromGoogle(r.FormValue("code"))
-	if err != nil {
-		log.Println(err.Error())
+	// Retrieve the state from cookies and compare it with the one received in the callback
+	oauthState, err := r.Cookie("oauthstate")
+	if err != nil || r.FormValue("state") != oauthState.Value {
+		log.Println("Invalid OAuth state")
 		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 		return
 	}
 
-	fmt.Fprintf(w, "User Info %s\n", user)
+	// Exchange the authorization code for a token
+	rawCode := r.FormValue("code")
+	if rawCode == "" {
+		log.Println("No auth code provided")
+		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+		return
+	}
 
-	// var jsonResp types.GoAuth
-	// code := r.URL.Query().Get("Code")
-	// t, err := config.GoogleOauthConfig.Exchange(context.Background(), code)
+	code, err := url.QueryUnescape(rawCode)
+	if err != nil {
+		log.Printf("Failed to decode authorization code: %s\n", err)
+		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+		return
+	}
+
+	token, err := config.GoogleOauthConfig.Exchange(context.Background(), code)
+	if err != nil {
+		log.Printf("Code exchange failed: %s\n", err)
+		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+		return
+	}
+
+	// Use the token to retrieve user information
+	client := config.GoogleOauthConfig.Client(context.Background(), token)
+	response, err := client.Get("https://www.googleapis.com/oauth2/v2/userinfo")
+	if err != nil {
+		log.Printf("Failed to get user info: %s\n", err)
+		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+		return
+	}
+	defer response.Body.Close()
+
+	// contents, err := io.ReadAll(response.Body)
 	// if err != nil {
-	// 	http.Error(w, err.Error(), http.StatusBadRequest)
+	// 	log.Printf("Failed to read user info: %s\n", err)
+	// 	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 	// 	return
 	// }
 
-	// client := config.GoogleOauthConfig.Client(context.Background(), t)
-	// resp, err := client.Get("https://www.googleapis.com/oauth2/v2/userinfo")
+	// fmt.Fprintf(w, "User Info: %s\n", contents)
 
-	// if err = json.NewDecoder(resp.Body).Decode(&jsonResp); err != nil {
-	// 	http.Error(w, err.Error(), http.StatusInternalServerError)
-	// 	return
-	// }
+	var userInfo map[string]interface{}
+	if err := json.NewDecoder(response.Body).Decode(&userInfo); err != nil {
+		log.Printf("Failed to parse user info: %s\n", err)
+		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+		return
+	}
+
+	email, ok := userInfo["email"].(string)
+	if !ok || email == "" {
+		log.Println("User email not found")
+		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+		return
+	}
+
+	// Create JWT token
+	jwtToken, err := CreateJWT(email)
+	if err != nil {
+		log.Printf("Failed to generate JWT: %s\n", err)
+		http.Redirect(w, r, "/", http.StatusInternalServerError)
+		return
+	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "auth_token",
+		Value:    jwtToken,
+		Path:     "/",
+		HttpOnly: true,                    // Prevent JavaScript access to cookies
+		Secure:   true,                    // Ensure cookies are sent only over HTTPS
+		SameSite: http.SameSiteStrictMode, // Prevent CSRF attacks
+		Expires:  time.Now().Add(24 * time.Hour),
+	})
+
+	http.Redirect(w, r, "http://localhost:3000/", http.StatusFound)
 }
 
 func generateStateOauthCookie(w http.ResponseWriter) string {
@@ -108,38 +168,4 @@ func generateStateOauthCookie(w http.ResponseWriter) string {
 	})
 
 	return state
-}
-
-func getUserDataFromGoogle(code string) ([]byte, error) {
-	oauthGoogleUrlAPI := config.GoogleOauthConfig.AuthCodeURL("state-token", oauth2.AccessTypeOffline)
-	token, err := config.GoogleOauthConfig.Exchange(context.Background(), code)
-	if err != nil {
-		return nil, fmt.Errorf("code exchange wrong: %s", err.Error())
-	}
-	client := config.GoogleOauthConfig.Client(context.Background(), token)
-
-	response, err := client.Get(oauthGoogleUrlAPI + token.AccessToken)
-	if err != nil {
-		return nil, fmt.Errorf("failed getting user info: %s", err.Error())
-	}
-	defer response.Body.Close()
-	contents, err := io.ReadAll(response.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed read response: %s", err.Error())
-	}
-
-	// var userData types.GoAuth
-	// err = json.Unmarshal(contents, &userData)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("JSON parsing failed: %s", err.Error())
-	// }
-
-	// var existingUser User
-	// if err := db.Query("Wemail = ?", types.GoAuth.Email).First(&existingUser).Error; err != nil {
-
-	// }
-
-	// saveUser(contents)
-	// saveToken(contents, token)
-	return contents, nil
 }

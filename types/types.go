@@ -119,11 +119,11 @@ type UserStore interface {
 }
 
 type User struct {
-	ID             int       `json:"id,omitempty"`
-	FirstName      string    `json:"firstName,omitempty"`
-	LastName       string    `json:"lastName,omitempty"`
-	Email          string    `json:"email,omitempty"`
-	Password       string    `json:"password,omitempty"`
+	ID        int    `json:"id,omitempty"`
+	FirstName string `json:"firstName,omitempty"`
+	LastName  string `json:"lastName,omitempty"`
+	Email     string `json:"email,omitempty"`
+	// Password       string    `json:"password,omitempty"`
 	PhoneNumber    string    `json:"phone_number,omitempty"`
 	ZipCode        string    `json:"zip_code,omitempty"`
 	City           string    `json:"city,omitempty"`

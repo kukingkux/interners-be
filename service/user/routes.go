@@ -8,7 +8,7 @@ import (
 	"github.com/gorilla/mux"
 
 	// "github.com/kukingkux/interners-be/config"
-	"github.com/kukingkux/interners-be/service/auth"
+
 	"github.com/kukingkux/interners-be/types"
 	"github.com/kukingkux/interners-be/utils"
 )
@@ -39,15 +39,15 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("invalid payload %v", errors))
 	}
 
-	u, err := h.store.GetUserByEmail(payload.Email)
-	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("not found, invalid email or password"))
-	}
+	// u, err := h.store.GetUserByEmail(payload.Email)
+	// if err != nil {
+	// 	utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("not found, invalid email or password"))
+	// }
 
-	if !auth.ComparePassword(u.Password, []byte(payload.Password)) {
-		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("not found, invalid email or password"))
-		return
-	}
+	// if !auth.ComparePassword(u.Password, []byte(payload.Password)) {
+	// 	utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("not found, invalid email or password"))
+	// 	return
+	// }
 
 	// secret := []byte(config.Envs.JWTSecret)
 	// token, err := auth.CreateJWT(secret, u.ID)
@@ -78,7 +78,7 @@ func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hashedPassword, err := auth.HashPassword(payload.Password)
+	// hashedPassword, err := auth.HashPassword(payload.Password)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, err)
 		return
@@ -89,7 +89,7 @@ func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 		FirstName: payload.FirstName,
 		LastName:  payload.LastName,
 		Email:     payload.Email,
-		Password:  hashedPassword,
+		// Password:  hashedPassword,
 	})
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, err)

@@ -81,10 +81,11 @@ func Certificates() (map[string]string, error) {
 	return certs, nil
 }
 
-func CreateJWT(secret []byte, userID int) (string, error) {
+func CreateJWT(email string) (string, error) {
+	secret := []byte(config.Envs.JWTSecret)
 	expiration := time.Second * time.Duration(config.Envs.JWTExpirationInSeconds)
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"userID":    strconv.Itoa(userID),
+		"email":     email,
 		"expiredAt": time.Now().Add(expiration).Unix(),
 	})
 
