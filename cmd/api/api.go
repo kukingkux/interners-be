@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/kukingkux/interners-be/service/auth"
 	"github.com/kukingkux/interners-be/service/post"
@@ -41,7 +42,20 @@ func (s *APIServer) Run() error {
 	}
 	authStore.RegisterRoutes(subrouter)
 
+	// corsHandler := handlers.CORS(
+	// 	handlers.AllowedOrigins([]string{"*"}), // Allow your frontend origin
+	// 	handlers.AllowedMethods([]string{"GET", "POST", "OPTIONS", "PUT", "DELETE"}), 
+	// 	handlers.AllowedHeaders([]string{"X-Requested-With", "Content-Type", "Authorization"}),
+	// 	handlers.AllowCredentials(),// This is essential for cookies
+	// )
+	
 	log.Println("Listening on", s.addr)
 
-	return http.ListenAndServe(s.addr, router)
+	return http.ListenAndServe(s.addr,
+		handlers.CORS(
+		handlers.AllowedOrigins([]string{"http://localhost:3000"}), // Allow your frontend origin
+		handlers.AllowedMethods([]string{"GET", "POST", "OPTIONS", "PUT", "DELETE"}), 
+		handlers.AllowedHeaders([]string{"X-Requested-With", "Content-Type", "Authorization"}),
+		handlers.AllowCredentials(),// This is essential for cookies
+	)(router))
 }

@@ -15,6 +15,24 @@ func NewStore(db *sql.DB) *Store {
 	return &Store{db: db}
 }
 
+func (s *Store) GetUsers() ([]*types.User, error) {
+	rows, err := s.db.Query("SELECT * FROM users")
+	if err != nil {
+		return nil, err
+	}
+
+	users := make([]*types.User, 0)
+	for rows.Next() {
+		user, err := scanRowsIntoUser(rows)
+		if err != nil {
+			return nil, err
+		}
+
+		users = append(users, user)
+	}
+	return users, nil
+}
+
 func (s *Store) GetUserByEmail(email string) (*types.User, error) {
 	rows, err := s.db.Query("SELECT * FROM users WHERE email = ?", email)
 	if err != nil {
@@ -44,7 +62,12 @@ func scanRowsIntoUser(rows *sql.Rows) (*types.User, error) {
 		&user.FirstName,
 		&user.LastName,
 		&user.Email,
-		// &user.Password,
+		&user.PhoneNumber,
+		&user.ZipCode,
+		&user.City,
+		&user.Address,
+		&user.CV,
+		&user.ProfilePicture,
 		&user.CreatedAt,
 	)
 	if err != nil {
@@ -79,6 +102,15 @@ func (s *Store) CreateUser(user types.User) error {
 
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (s *Store) UpdateUserAtFirstLogin(user types.User) error {
+	_, err := s.db.Exec("UPDATE users SET firstName = ?, lastName = ? WHERE email = ?", user.FirstName, user.LastName, user.Email)
+	if err != nil {
+		return fmt.Errorf("failed to update user: %w", err)
 	}
 
 	return nil

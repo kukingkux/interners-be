@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/mux"
 	"github.com/kukingkux/interners-be/config"
 	"github.com/kukingkux/interners-be/types"
@@ -19,6 +20,7 @@ import (
 )
 
 type Handler struct {
+	userInfo types.UserInfo
 	userStore types.UserStore
 	goAuth    types.GoAuth
 	db        *sql.DB
@@ -36,9 +38,11 @@ func NewAuthHandler(userStore types.UserStore) (*Handler, error) {
 }
 
 func (h *Handler) RegisterRoutes(router *mux.Router) {
+	
 	router.HandleFunc("/auth/google/login", h.oauthGoogleLogin).Methods(http.MethodGet)
 	// router.HandleFunc("/auth/google/oauth", h.oauthHandler)
 	router.HandleFunc("/auth/google/callback", h.oauthGoogleCallback).Methods(http.MethodGet)
+	router.HandleFunc("/auth/user", h.handleGetUser).Methods(http.MethodGet)
 	// router.HandleFunc("/logout", h.getAuthCallbackFunction)
 }
 
@@ -95,14 +99,21 @@ func (h *Handler) oauthGoogleCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Use the token to retrieve user information
-	client := config.GoogleOauthConfig.Client(context.Background(), token)
-	response, err := client.Get("https://www.googleapis.com/oauth2/v2/userinfo")
+	userInfo, err := h.fetchUserData(token)
 	if err != nil {
-		log.Printf("Failed to get user info: %s\n", err)
+		log.Printf("failed to get user info: %s\n", err)
 		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 		return
 	}
-	defer response.Body.Close()
+
+	// client := config.GoogleOauthConfig.Client(context.Background(), token)
+	// response, err := client.Get("https://www.googleapis.com/oauth2/v2/userinfo")
+	// if err != nil {
+	// 	log.Printf("Failed to get user info: %s\n", err)
+	// 	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+	// 	return
+	// }
+	// defer response.Body.Close()
 
 	// contents, err := io.ReadAll(response.Body)
 	// if err != nil {
@@ -113,22 +124,22 @@ func (h *Handler) oauthGoogleCallback(w http.ResponseWriter, r *http.Request) {
 
 	// fmt.Fprintf(w, "User Info: %s\n", contents)
 
-	var userInfo map[string]interface{}
-	if err := json.NewDecoder(response.Body).Decode(&userInfo); err != nil {
-		log.Printf("Failed to parse user info: %s\n", err)
-		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
-		return
-	}
+	// var userInfo map[string]interface{}
+	// if err := json.NewDecoder(response.Body).Decode(&userInfo); err != nil {
+	// 	log.Printf("Failed to parse user info: %s\n", err)
+	// 	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+	// 	return
+	// }
 
-	email, ok := userInfo["email"].(string)
-	if !ok || email == "" {
-		log.Println("User email not found")
-		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
-		return
-	}
+	// email, ok := userInfo["email"].(string)
+	// if !ok || email == "" {
+	// 	log.Println("User email not found")
+	// 	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+	// 	return
+	// }
 
 	// Create JWT token
-	jwtToken, err := CreateJWT(email)
+	jwtToken, err := CreateJWT(userInfo.Email)
 	if err != nil {
 		log.Printf("Failed to generate JWT: %s\n", err)
 		http.Redirect(w, r, "/", http.StatusInternalServerError)
@@ -168,4 +179,60 @@ func generateStateOauthCookie(w http.ResponseWriter) string {
 	})
 
 	return state
+}
+
+func (h *Handler) fetchUserData(token *oauth2.Token) (*types.UserInfo, error) {
+	client := config.GoogleOauthConfig.Client(context.Background(), token)
+	response, err := client.Get("https://www.googleapis.com/oauth2/v3/userinfo")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user info: %w", err)
+	}
+	defer response.Body.Close()
+
+	var userInfo types.UserInfo
+	if err := json.NewDecoder(response.Body).Decode(&userInfo); err != nil {
+		return nil, fmt.Errorf("failed to parse user info: %w", err)
+	}
+
+	return &userInfo, nil
+}
+
+func (h *Handler) handleGetUser(w http.ResponseWriter, r *http.Request) {
+	tokenCookie, err := r.Cookie("auth_token")
+	if err != nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Use your existing ValidateToken function
+	token, err := ValidateToken(tokenCookie.Value)
+	if err != nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Extract the claims
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok || !token.Valid {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Get the email from the claims (assuming you stored it as "email" in CreateJWT)
+	email, ok := claims["email"].(string) // This is the important part
+	if !ok {
+		http.Error(w, "Invalid token claims", http.StatusInternalServerError)
+		return
+	}
+	fmt.Println("Extracted email from token:", email)
+
+	// Fetch user data using the email
+	user, err := h.userStore.GetUserByEmail(email)
+	if err != nil {
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(user)
 }

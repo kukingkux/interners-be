@@ -103,7 +103,7 @@ func WithJWTAuth(handlerFunc http.HandlerFunc, store types.UserStore) http.Handl
 		tokenString := getTokenFromRequest(r)
 
 		// validate JWT
-		token, err := validateToken(tokenString)
+		token, err := ValidateToken(tokenString)
 		if err != nil {
 			log.Printf("failed to validate token: %v", err)
 			permissionDenied(w)
@@ -148,7 +148,7 @@ func getTokenFromRequest(r *http.Request) string {
 	return ""
 }
 
-func validateToken(t string) (*jwt.Token, error) {
+func ValidateToken(t string) (*jwt.Token, error) {
 	return jwt.Parse(t, func(t *jwt.Token) (interface{}, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
