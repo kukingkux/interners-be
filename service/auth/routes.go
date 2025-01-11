@@ -12,17 +12,18 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/go-playground/validator"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/mux"
 	"github.com/kukingkux/interners-be/config"
 	"github.com/kukingkux/interners-be/types"
+	"github.com/kukingkux/interners-be/utils"
 	"golang.org/x/oauth2"
 )
 
 type Handler struct {
 	userInfo types.UserInfo
 	userStore types.UserStore
-	goAuth    types.GoAuth
 	db        *sql.DB
 	certs     map[string]string
 }
@@ -38,12 +39,10 @@ func NewAuthHandler(userStore types.UserStore) (*Handler, error) {
 }
 
 func (h *Handler) RegisterRoutes(router *mux.Router) {
-	
 	router.HandleFunc("/auth/google/login", h.oauthGoogleLogin).Methods(http.MethodGet)
-	// router.HandleFunc("/auth/google/oauth", h.oauthHandler)
 	router.HandleFunc("/auth/google/callback", h.oauthGoogleCallback).Methods(http.MethodGet)
 	router.HandleFunc("/auth/user", h.handleGetUser).Methods(http.MethodGet)
-	// router.HandleFunc("/logout", h.getAuthCallbackFunction)
+	// router.HandleFunc("/auth/user", h.handleCreateUser).Methods(http.MethodPost)
 }
 
 func (h *Handler) oauthGoogleLogin(w http.ResponseWriter, r *http.Request) {
@@ -77,23 +76,9 @@ func (h *Handler) oauthGoogleCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Exchange the authorization code for a token
-	rawCode := r.FormValue("code")
-	if rawCode == "" {
-		log.Println("No auth code provided")
-		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
-		return
-	}
-
-	code, err := url.QueryUnescape(rawCode)
+	token, err := h.exchangeAuthCode(r)
 	if err != nil {
-		log.Printf("Failed to decode authorization code: %s\n", err)
-		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
-		return
-	}
-
-	token, err := config.GoogleOauthConfig.Exchange(context.Background(), code)
-	if err != nil {
-		log.Printf("Code exchange failed: %s\n", err)
+		log.Printf("Failed to exchange authorization code for token: %s\n", err)
 		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 		return
 	}
@@ -106,37 +91,9 @@ func (h *Handler) oauthGoogleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// client := config.GoogleOauthConfig.Client(context.Background(), token)
-	// response, err := client.Get("https://www.googleapis.com/oauth2/v2/userinfo")
-	// if err != nil {
-	// 	log.Printf("Failed to get user info: %s\n", err)
-	// 	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
-	// 	return
-	// }
-	// defer response.Body.Close()
-
-	// contents, err := io.ReadAll(response.Body)
-	// if err != nil {
-	// 	log.Printf("Failed to read user info: %s\n", err)
-	// 	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
-	// 	return
-	// }
-
-	// fmt.Fprintf(w, "User Info: %s\n", contents)
-
-	// var userInfo map[string]interface{}
-	// if err := json.NewDecoder(response.Body).Decode(&userInfo); err != nil {
-	// 	log.Printf("Failed to parse user info: %s\n", err)
-	// 	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
-	// 	return
-	// }
-
-	// email, ok := userInfo["email"].(string)
-	// if !ok || email == "" {
-	// 	log.Println("User email not found")
-	// 	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
-	// 	return
-	// }
+	if err := h.handleCreateUser(w, userInfo); err != nil {
+		return
+	}
 
 	// Create JWT token
 	jwtToken, err := CreateJWT(userInfo.Email)
@@ -159,27 +116,27 @@ func (h *Handler) oauthGoogleCallback(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "http://localhost:3000/", http.StatusFound)
 }
 
-func generateStateOauthCookie(w http.ResponseWriter) string {
-	// a, err := NewApp()
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
+func (h *Handler) exchangeAuthCode(r *http.Request) (*oauth2.Token, error) {
+	rawCode := r.FormValue("code")
+	if rawCode == "" {
+		log.Println("No auth code provided")
+	}
 
-	b := make([]byte, 16)
-	rand.Read(b)
-	state := base64.URLEncoding.EncodeToString(b)
+	code, err := url.QueryUnescape(rawCode)
+	if err != nil {
+		log.Printf("Failed to decode authorization code: %s\n", err)
+		
+	}
 
-	http.SetCookie(w, &http.Cookie{
-		Name:     "oauthstate",
-		Value:    state,
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteLaxMode,
-	})
+	token, err := config.GoogleOauthConfig.Exchange(context.Background(), code)
+	if err != nil {
+		log.Printf("Code exchange failed: %s\n", err)
+	}
 
-	return state
+	return token, nil
 }
+
+
 
 func (h *Handler) fetchUserData(token *oauth2.Token) (*types.UserInfo, error) {
 	client := config.GoogleOauthConfig.Client(context.Background(), token)
@@ -235,4 +192,56 @@ func (h *Handler) handleGetUser(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(user)
+}
+
+func (h *Handler) handleCreateUser(w http.ResponseWriter, userInfo *types.UserInfo) error {
+	var user types.CreateUserPayload
+	
+	fmt.Println("Email:", userInfo.Email)
+
+	user.FirstName = userInfo.GivenName
+	user.LastName = userInfo.FamilyName
+	user.Email = userInfo.Email
+
+	if err := utils.Validate.Struct(user); err != nil {
+		errors := err.(validator.ValidationErrors)
+		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("invalid payload: %v", errors))
+	}
+
+	existingUser, err := h.userStore.GetUserByEmail(userInfo.Email)
+    if err != nil {
+        if err == sql.ErrNoRows {
+            // User not found - proceed with creating the user
+        } else {
+            return fmt.Errorf("failed to check for existing user: %w", err)
+        }
+    } else {
+        log.Printf("User with email %s already exists", existingUser.Email)
+        return nil
+    }
+
+	err = h.userStore.CreateUser(user)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, err)
+		return fmt.Errorf("failed to create user: %w", err)
+	}
+	utils.WriteJSON(w, http.StatusCreated, user)
+	return nil
+}
+
+func generateStateOauthCookie(w http.ResponseWriter) string {
+	b := make([]byte, 16)
+	rand.Read(b)
+	state := base64.URLEncoding.EncodeToString(b)
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "oauthstate",
+		Value:    state,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	return state
 }

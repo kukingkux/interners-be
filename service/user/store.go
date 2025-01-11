@@ -97,8 +97,8 @@ func (s *Store) GetUserById(id int) (*types.User, error) {
 
 	return u, nil
 }
-func (s *Store) CreateUser(user types.User) error {
-	_, err := s.db.Exec("INSERT INTO users (firstName, lastName, email, password) VALUES (?	,?,?,?)", user.FirstName, user.LastName, user.Email) //  user.Password
+func (s *Store) CreateUser(user types.CreateUserPayload) error {
+	_, err := s.db.Exec("INSERT INTO users (firstName, lastName, email, phoneNumber, zipCode, city, address, cv, profilePicture) VALUES (?,?,?,'','','','','','')", user.FirstName, user.LastName, user.Email) //  user.Password
 
 	if err != nil {
 		return err

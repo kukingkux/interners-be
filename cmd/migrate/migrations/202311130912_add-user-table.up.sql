@@ -3,7 +3,6 @@ CREATE TABLE IF NOT EXISTS users (
     `firstName` VARCHAR(255) NOT NULL,
     `lastName` VARCHAR(255) NOT NULL,
     `email` VARCHAR(255) NOT NULL,
-    `password` VARCHAR(255) NOT NULL,
     `phoneNumber` VARCHAR(15),
     `zipCode` VARCHAR(9),
     `city` VARCHAR(255),

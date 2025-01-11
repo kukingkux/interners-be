@@ -2,17 +2,6 @@ package types
 
 import "time"
 
-type GoAuth struct {
-	Id            string `json:"id,omitempty"`
-	Email         string `json:"email,omitempty"`
-	VerifiedEmail bool   `json:"verified_email,omitempty"`
-	Name          string `json:"name,omitempty"`
-	GivenName     string `json:"given_name,omitempty"`
-	FamilyName    string `json:"family_name,omitempty"`
-	Picture       string `json:"picture,omitempty"`
-	Locale        string `json:"locale,omitempty"`
-}
-
 type PostStore interface {
 	GetPosts() ([]*Post, error)
 	GetPostById(id int) (*Post, error)
@@ -128,7 +117,7 @@ type UserStore interface {
 	GetUserByEmail(email string) (*User, error)
 	GetUserById(id int) (*User, error)
 	UpdateUserAtFirstLogin(User) error 
-	CreateUser(User) error
+	CreateUser(CreateUserPayload) error
 }
 
 type User struct {
@@ -136,7 +125,6 @@ type User struct {
 	FirstName string `json:"firstName,omitempty"`
 	LastName  string `json:"lastName,omitempty"`
 	Email     string `json:"email,omitempty"`
-	// Password       string    `json:"password,omitempty"`
 	PhoneNumber    string    `json:"phone_number,omitempty"`
 	ZipCode        string    `json:"zip_code,omitempty"`
 	City           string    `json:"city,omitempty"`
@@ -189,7 +177,9 @@ type RegisterUserPayload struct {
 	Email     string `json:"email,omitempty" validate:"required,email"`
 	Password  string `json:"password,omitempty" validate:"required,min=8,max=120"`
 }
-type LoginUserPayload struct {
+
+type CreateUserPayload struct {
 	Email    string `json:"email,omitempty" validate:"required,email"`
-	Password string `json:"password,omitempty" validate:"required,min=8,max=120"`
+	FirstName string `json:"first_name,omitempty"`
+	LastName  string `json:"last_name,omitempty"`
 }
